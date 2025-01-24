@@ -6,14 +6,22 @@ import splashSound from "../assets/water-splash.mp3"; // Suara untuk splash warn
 import punchSound from "../assets/punch.mp3"; // Suara untuk tinju
 
 const PhotoCanvas = ({ photo }) => {
-  const [eggs, setEggs] = useState([]); // Array untuk menyimpan semua telur
-  const [splashes, setSplashes] = useState([]); // Array untuk splash warna
-  const [punches, setPunches] = useState([]); // Array untuk efek tinju
-  const [makeupLines, setMakeupLines] = useState([]); // Array untuk garis makeup
-  const [mode, setMode] = useState("egg"); // Mode aktif: "egg", "color", "punch", atau "makeup"
-  const [isDrawing, setIsDrawing] = useState(false); // Status menggambar makeup
+  const [eggs, setEggs] = useState([]);
+  const [splashes, setSplashes] = useState([]);
+  const [punches, setPunches] = useState([]);
+  const [makeupLines, setMakeupLines] = useState([]);
+  const [mode, setMode] = useState("egg");
+  const [isDrawing, setIsDrawing] = useState(false);
 
   const stageRef = useRef(null);
+
+  // Dimensi gambar di kanvas
+  const imageDimensions = {
+    x: 50,
+    y: 0,
+    width: 300,
+    height: 300,
+  };
 
   // Fungsi untuk memutar suara
   const playSound = (sound) => {
@@ -21,89 +29,96 @@ const PhotoCanvas = ({ photo }) => {
     audio.play();
   };
 
+  // Periksa apakah pointer berada di dalam area gambar
+  const isInsideImage = (x, y) => {
+    const { x: imgX, y: imgY, width, height } = imageDimensions;
+    return x >= imgX && x <= imgX + width && y >= imgY && y <= imgY + height;
+  };
+
   // Fungsi untuk melempar telur
-  const handleThrowEgg = () => {
-    playSound(throwSound); // Putar suara lemparan telur
+  const handleThrowEgg = (e) => {
+    playSound(throwSound);
 
-    // Pastikan posisi acak berada di dalam area gambar
-    const x = Math.random() * 300 + 50; // Posisi horizontal acak
-    const y = Math.random() * 250 + 25; // Posisi vertikal acak
-    const newEgg = {
-      id: Date.now(),
-      x,
-      y,
-      cracked: false, // Telur belum pecah
-    };
+    const pointerPosition = e.target.getStage().getPointerPosition();
+    const { x, y } = pointerPosition;
 
-    // Tambahkan telur ke dalam array state
-    setEggs((prev) => [...prev, newEgg]);
+    if (isInsideImage(x, y)) {
+      const newEgg = { id: Date.now(), x, y, cracked: false };
 
-    // Simulasikan telur pecah setelah 1 detik
-    setTimeout(() => {
-      setEggs((prev) =>
-        prev.map((egg) =>
-          egg.id === newEgg.id ? { ...egg, cracked: true } : egg
-        )
-      );
-    }, 1000);
+      setEggs((prev) => [...prev, newEgg]);
+
+      setTimeout(() => {
+        setEggs((prev) =>
+          prev.map((egg) => (egg.id === newEgg.id ? { ...egg, cracked: true } : egg))
+        );
+      }, 1000);
+    }
   };
 
   // Fungsi untuk melempar warna
   const handleThrowColor = (e) => {
-    playSound(splashSound); // Putar suara splash
-    const stage = e.target.getStage();
-    const pointerPosition = stage.getPointerPosition();
+    playSound(splashSound);
 
-    // Tambahkan splash warna baru
-    const newSplash = {
-      id: Date.now(),
-      x: pointerPosition.x,
-      y: pointerPosition.y,
-      colors: ["#FF5722", "#FFC107", "#4CAF50", "#2196F3"], // Warna acak
-    };
-    setSplashes((prev) => [...prev, newSplash]);
+    const pointerPosition = e.target.getStage().getPointerPosition();
+    const { x, y } = pointerPosition;
 
-    // Hapus splash setelah beberapa detik
-    setTimeout(() => {
-      setSplashes((prev) => prev.filter((splash) => splash.id !== newSplash.id));
-    }, 2000);
+    if (isInsideImage(x, y)) {
+      const newSplash = {
+        id: Date.now(),
+        x,
+        y,
+        colors: ["#FF5722", "#FFC107", "#4CAF50", "#2196F3"],
+      };
+      setSplashes((prev) => [...prev, newSplash]);
+
+      setTimeout(() => {
+        setSplashes((prev) => prev.filter((splash) => splash.id !== newSplash.id));
+      }, 2000);
+    }
   };
 
   // Fungsi untuk tinju
   const handlePunch = (e) => {
-    playSound(punchSound); // Putar suara tinju
-    const stage = e.target.getStage();
-    const pointerPosition = stage.getPointerPosition();
+    playSound(punchSound);
 
-    // Tambahkan efek bonyok baru
-    const newPunch = {
-      id: Date.now(),
-      x: pointerPosition.x,
-      y: pointerPosition.y,
-    };
-    setPunches((prev) => [...prev, newPunch]);
+    const pointerPosition = e.target.getStage().getPointerPosition();
+    const { x, y } = pointerPosition;
+
+    if (isInsideImage(x, y)) {
+      const newPunch = { id: Date.now(), x, y };
+      setPunches((prev) => [...prev, newPunch]);
+    }
   };
 
   // Fungsi untuk memulai menggambar makeup
-  const handleMouseDown = (e) => {
+  const handleStartDrawing = (e) => {
     if (mode === "makeup") {
-      setIsDrawing(true);
-      const pos = e.target.getStage().getPointerPosition();
-      setMakeupLines([...makeupLines, { points: [pos.x, pos.y] }]);
+      const pointerPosition = e.target.getStage().getPointerPosition();
+      const { x, y } = pointerPosition;
+
+      if (isInsideImage(x, y)) {
+        setIsDrawing(true);
+        setMakeupLines([...makeupLines, { points: [x, y] }]);
+      }
     }
   };
 
   // Fungsi untuk menggambar makeup
-  const handleMouseMove = (e) => {
+  const handleDrawing = (e) => {
     if (!isDrawing || mode !== "makeup") return;
-    const pos = e.target.getStage().getPointerPosition();
-    const lastLine = makeupLines[makeupLines.length - 1];
-    lastLine.points = lastLine.points.concat([pos.x, pos.y]);
-    setMakeupLines(makeupLines.slice(0, makeupLines.length - 1).concat(lastLine));
+
+    const pointerPosition = e.target.getStage().getPointerPosition();
+    const { x, y } = pointerPosition;
+
+    if (isInsideImage(x, y)) {
+      const lastLine = makeupLines[makeupLines.length - 1];
+      lastLine.points = lastLine.points.concat([x, y]);
+      setMakeupLines(makeupLines.slice(0, makeupLines.length - 1).concat(lastLine));
+    }
   };
 
   // Fungsi untuk berhenti menggambar makeup
-  const handleMouseUp = () => {
+  const handleStopDrawing = () => {
     setIsDrawing(false);
   };
 
@@ -116,12 +131,7 @@ const PhotoCanvas = ({ photo }) => {
   };
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      sx={{ my: 4 }}
-    >
+    <Box display="flex" flexDirection="column" alignItems="center" sx={{ my: 4 }}>
       {/* Pilihan Mode */}
       <Stack direction="row" spacing={2} mb={2}>
         <Button
@@ -152,11 +162,7 @@ const PhotoCanvas = ({ photo }) => {
         >
           Makeup 💄
         </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleReset}
-        >
+        <Button variant="outlined" color="secondary" onClick={handleReset}>
           Reset 🧹
         </Button>
       </Stack>
@@ -166,11 +172,14 @@ const PhotoCanvas = ({ photo }) => {
         ref={stageRef}
         width={400}
         height={300}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onMouseDown={handleStartDrawing}
+        onMouseMove={handleDrawing}
+        onMouseUp={handleStopDrawing}
+        onTouchStart={handleStartDrawing}
+        onTouchMove={handleDrawing}
+        onTouchEnd={handleStopDrawing}
         onClick={(e) => {
-          if (mode === "egg") handleThrowEgg(); // Memanggil handleThrowEgg
+          if (mode === "egg") handleThrowEgg(e);
           if (mode === "color") handleThrowColor(e);
           if (mode === "punch") handlePunch(e);
         }}
@@ -182,21 +191,12 @@ const PhotoCanvas = ({ photo }) => {
       >
         <Layer>
           {/* Foto */}
-          <Image
-            image={photo}
-            x={50}
-            y={0}
-            width={300}
-            height={300}
-            alt="birthday photo"
-          />
+          <Image {...imageDimensions} image={photo} alt="birthday photo" />
 
           {/* Semua Telur */}
           {eggs.map((egg) => (
             <Group key={egg.id}>
-              {!egg.cracked && (
-                <Circle x={egg.x} y={egg.y} radius={20} fill="yellow" />
-              )}
+              {!egg.cracked && <Circle x={egg.x} y={egg.y} radius={20} fill="yellow" />}
               {egg.cracked && (
                 <Group>
                   <Circle x={egg.x - 10} y={egg.y} radius={10} fill="orange" />
@@ -225,14 +225,7 @@ const PhotoCanvas = ({ photo }) => {
 
           {/* Efek Tinju */}
           {punches.map((punch) => (
-            <Circle
-              key={punch.id}
-              x={punch.x}
-              y={punch.y}
-              radius={30}
-              fill="red"
-              opacity={0.6}
-            />
+            <Circle key={punch.id} x={punch.x} y={punch.y} radius={30} fill="red" opacity={0.6} />
           ))}
 
           {/* Makeup */}
